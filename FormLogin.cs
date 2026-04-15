@@ -79,7 +79,7 @@ namespace CineMatch
             };
             Controls.Add(hint);
 
-            // ── Login panel ───────────────────────────────────
+            //Login panel 
             pnlLogin = new Panel
             {
                 Location = new Point(30, 130),
@@ -98,7 +98,7 @@ namespace CineMatch
             pnlLogin.Controls.Add(btnLogin);
             Controls.Add(pnlLogin);
 
-            // ── Register panel ────────────────────────────────
+            // Register panel
             pnlRegister = new Panel
             {
                 Location = new Point(30, 130),
@@ -180,7 +180,7 @@ namespace CineMatch
             ShowPanel(true);
         }
 
-        // ── Show login or register panel ──────────────────────
+        //Show login or register panel
         private void ShowPanel(bool login)
         {
             pnlLogin.Visible = login;
@@ -202,7 +202,7 @@ namespace CineMatch
                 : Color.FromArgb(180, 180, 180);
         }
 
-        // ── Login button click ────────────────────────────────
+        //Login button click
         private void BtnLogin_Click(object sender, EventArgs e)
         {
             lblError.Text = "";
@@ -235,7 +235,7 @@ namespace CineMatch
             }
         }
 
-        // ── Register button click ─────────────────────────────
+        //Register button click
         private void BtnRegister_Click(object sender, EventArgs e)
         {
             lblError.Text = "";
@@ -278,7 +278,7 @@ namespace CineMatch
             }
         }
 
-        // ── Control factory helpers ───────────────────────────
+        //Control factory helpers
         private Label MakeLabel(string text, int y)
         {
             return new Label

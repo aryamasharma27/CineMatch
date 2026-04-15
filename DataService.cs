@@ -1,30 +1,4 @@
-﻿// ============================================================
-//  DataService.cs  —  Every SQL query lives here
-//
-//  BACKEND EXPLANATION:
-//  This is the "Data Access Layer" (DAL).  The UI forms never
-//  write SQL themselves — they call methods here.
-//  That separation is called "Separation of Concerns".
-//
-//  KEY ADO.NET CONCEPTS USED:
-//
-//  1. MySqlCommand + ExecuteReader  — "Connected architecture"
-//     The connection stays open while we read row by row.
-//     Good for streaming large result sets.
-//
-//  2. MySqlDataAdapter + DataTable  — "Disconnected architecture"
-//     The adapter fetches ALL rows into a DataTable in memory,
-//     then the connection closes.  We can bind the DataTable
-//     directly to a DataGridView.
-//
-//  3. Parameters (@name)  — prevent SQL Injection
-//     We NEVER concatenate user input into SQL strings.
-//     cmd.Parameters.AddWithValue("@username", value) is safe.
-//
-//  4. using() blocks  — automatic resource cleanup
-//     When the using block ends C# calls .Dispose() on the
-//     connection/command even if an exception is thrown.
-// ============================================================
+﻿
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -34,40 +8,29 @@ namespace CineMatch
 {
     public static class DataService
     {
-        // ════════════════════════════════════════════════════
-        //  AUTH
-        // ════════════════════════════════════════════════════
-
-        /// <summary>
-        /// Login: SELECT user WHERE username=? AND password=?
-        /// Returns the User object or null if credentials are wrong.
-        /// </summary>
+        // AUTH
         public static User Login(string username, string password)
         {
-            // "using" ensures the connection is closed when the block exits
+            
             using (var conn = DB.GetConnection())
-            // MySqlCommand wraps a SQL string + the connection
+            
             using (var cmd = new MySqlCommand(
                 "SELECT * FROM Users WHERE username = @u AND password = @p", conn))
             {
-                // Parameters replace @u and @p safely — no SQL injection possible
+                
                 cmd.Parameters.AddWithValue("@u", username);
                 cmd.Parameters.AddWithValue("@p", password);
 
-                // ExecuteReader runs SELECT and returns a cursor
+                
                 using (var rdr = cmd.ExecuteReader())
                 {
-                    if (rdr.Read())           // .Read() advances to the next row; returns false if no rows
-                        return MapUser(rdr);  // convert the current row into a User object
-                    return null;              // wrong credentials
+                    if (rdr.Read())           
+                        return MapUser(rdr);  
+                    return null;              
                 }
             }
         }
 
-        /// <summary>
-        /// Register: INSERT a new user row.
-        /// Returns the new user's auto-generated ID.
-        /// </summary>
         public static int Register(string fullName, string email,
                                    string username, string password,
                                    DateTime dob, string favGenre)
@@ -84,27 +47,21 @@ namespace CineMatch
                 cmd.Parameters.AddWithValue("@dob", dob.ToString("yyyy-MM-dd"));
                 cmd.Parameters.AddWithValue("@fg", string.IsNullOrEmpty(favGenre) ? DBNull.Value : (object)favGenre);
 
-                // ExecuteNonQuery runs INSERT/UPDATE/DELETE; returns rows affected
+                
                 cmd.ExecuteNonQuery();
 
-                // LastInsertedId is the AUTO_INCREMENT value MySQL assigned
                 return (int)cmd.LastInsertedId;
             }
         }
 
-        // ════════════════════════════════════════════════════
+        
         //  MOVIES
-        // ════════════════════════════════════════════════════
-
-        /// <summary>
-        /// Returns all movies, optionally filtered and sorted.
-        /// This demonstrates building a dynamic SQL query safely.
-        /// </summary>
+        
         public static List<Movie> GetMovies(string search = "", string genre = "",
                                             string mood = "", string sort = "rating_avg",
                                             int userId = 0)
         {
-            // Build WHERE clause dynamically
+          
             var where = new System.Text.StringBuilder("WHERE 1=1");
             if (!string.IsNullOrWhiteSpace(search))
                 where.Append(" AND (m.title LIKE @search OR m.director LIKE @search)");
@@ -113,13 +70,12 @@ namespace CineMatch
             if (!string.IsNullOrWhiteSpace(mood))
                 where.Append(" AND FIND_IN_SET(@mood, REPLACE(m.moods,', ',',')) > 0");
 
-            // Whitelist sort columns to prevent injection
             string orderCol = sort == "year" ? "m.release_year DESC"
                             : sort == "title" ? "m.title ASC"
                             : sort == "trending" ? "m.trending DESC"
                             : "m.rating_avg DESC";
 
-            // LEFT JOIN brings in the current user's rating (NULL if not rated)
+          
             string sql = $@"
                 SELECT m.*,
                        COALESCE(r.stars, 0) AS user_rating
@@ -148,16 +104,9 @@ namespace CineMatch
             return movies;
         }
 
-        // ════════════════════════════════════════════════════
+       
         //  RATINGS  — CRUD: CREATE / UPDATE
-        // ════════════════════════════════════════════════════
-
-        /// <summary>
-        /// Upsert rating: if the user already rated this movie UPDATE it,
-        /// otherwise INSERT a new row.
-        /// MySQL's "ON DUPLICATE KEY UPDATE" handles this in one statement
-        /// because (user_id, movie_id) has a UNIQUE constraint.
-        /// </summary>
+    
         public static void SaveRating(int userId, int movieId, int stars)
         {
             using (var conn = DB.GetConnection())
@@ -175,7 +124,7 @@ namespace CineMatch
                 }
 
                 // Step 2 — recalculate the movie's average rating
-                // AVG() and COUNT() are SQL aggregate functions
+            
                 using (var cmd = new MySqlCommand(@"
                     UPDATE Movies m
                     SET m.rating_avg   = (SELECT ROUND(AVG(r.stars),1) FROM Ratings r WHERE r.movie_id = @mid),
@@ -188,22 +137,17 @@ namespace CineMatch
             }
         }
 
-        // ════════════════════════════════════════════════════
+       
         //  PROFILE  — calls the stored procedure
-        // ════════════════════════════════════════════════════
-
-        /// <summary>
-        /// Calls sp_GetUserProfile stored procedure, then runs
-        /// separate queries for rating history and genre preferences.
-        /// </summary>
+       
         public static UserProfile GetProfile(int userId)
         {
             var profile = new UserProfile();
 
             using (var conn = DB.GetConnection())
             {
-                // ── Stored Procedure call ─────────────────────
-                // CommandType.StoredProcedure tells ADO.NET to use CALL syntax
+                // Stored Procedure call
+               
                 using (var cmd = new MySqlCommand("sp_GetUserProfile", conn))
                 {
                     cmd.CommandType = CommandType.StoredProcedure;
@@ -213,7 +157,7 @@ namespace CineMatch
                     {
                         if (rdr.Read())
                         {
-                            // The SP returns one row with user info + aggregated stats
+                        
                             profile.Info = new User
                             {
                                 UserId = rdr.GetInt32("user_id"),
@@ -234,8 +178,8 @@ namespace CineMatch
 
                 if (profile.Info == null) return profile;
 
-                // ── Rating history (JOIN Ratings × Movies) ────
-                // This shows the "JOIN" concept from Unit 3
+                //Rating history (JOIN Ratings × Movies)
+               
                 using (var cmd = new MySqlCommand(@"
                     SELECT r.rating_id, r.movie_id, m.title, m.genres,
                            r.stars, r.rated_at
@@ -260,8 +204,7 @@ namespace CineMatch
                     }
                 }
 
-                // ── Genre taste map ───────────────────────────
-                // GROUP BY genre, COUNT how many movies user rated per genre
+                // Genre taste map 
                 using (var cmd = new MySqlCommand(@"
                     SELECT TRIM(SUBSTRING_INDEX(m.genres,',',1)) AS genre,
                            COUNT(*) AS cnt
@@ -289,15 +232,8 @@ namespace CineMatch
             return profile;
         }
 
-        // ════════════════════════════════════════════════════
         //  RECOMMENDATIONS  — calls the stored procedure
-        // ════════════════════════════════════════════════════
-
-        /// <summary>
-        /// Calls sp_GetRecommendations which returns THREE result sets
-        /// (genre-based, top-rated, trending).
-        /// NextResult() advances to the next result set.
-        /// </summary>
+      
         public static List<RecSection> GetRecommendations(int userId)
         {
             var result = new List<RecSection>();
@@ -312,10 +248,10 @@ namespace CineMatch
                 using (var rdr = cmd.ExecuteReader())
                 {
                     int setIndex = 0;
-                    do   // loop over each result set
+                    do 
                     {
                         var movies = new List<Movie>();
-                        while (rdr.Read())      // loop over rows in this result set
+                        while (rdr.Read())      
                         {
                             var m = MapMovie(rdr);
                             m.RecType = setIndex < types.Length ? types[setIndex] : "other";
@@ -325,16 +261,13 @@ namespace CineMatch
                             result.Add(new RecSection { Type = types[setIndex], Movies = movies });
                         setIndex++;
                     }
-                    while (rdr.NextResult());   // NextResult() = advance to next SELECT result
+                    while (rdr.NextResult());   
                 }
             }
             return result;
         }
-
-        // ════════════════════════════════════════════════════
         //  STATS  — aggregate queries for dashboard
-        // ════════════════════════════════════════════════════
-
+    
         public static (int Movies, int Ratings, int Users) GetStats()
         {
             using (var conn = DB.GetConnection())
@@ -350,12 +283,8 @@ namespace CineMatch
                 return (0, 0, 0);
             }
         }
-
-        // ════════════════════════════════════════════════════
         //  HELPERS  — convert a DataReader row into an object
-        // ════════════════════════════════════════════════════
-
-        // Reads columns from the current reader row → User
+      
         private static User MapUser(MySqlDataReader rdr) => new User
         {
             UserId = rdr.GetInt32("user_id"),
@@ -367,7 +296,6 @@ namespace CineMatch
             JoinedAt = rdr.GetDateTime("joined_at"),
         };
 
-        // Reads columns from the current reader row → Movie
         private static Movie MapMovie(MySqlDataReader rdr) => new Movie
         {
             MovieId = rdr.GetInt32("movie_id"),
@@ -384,7 +312,6 @@ namespace CineMatch
                           ? rdr.GetInt32("user_rating") : 0,
         };
 
-        // Safely checks whether a column name exists in the current reader
         private static bool HasColumn(MySqlDataReader rdr, string col)
         {
             for (int i = 0; i < rdr.FieldCount; i++)

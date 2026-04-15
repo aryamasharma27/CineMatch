@@ -51,7 +51,7 @@ namespace CineMatch
             BackColor = Color.FromArgb(9, 9, 15);
             ForeColor = Color.FromArgb(238, 232, 213);
 
-            // ── Nav bar ───────────────────────────────────────
+            //Nav bar
             var navBar = new Panel
             {
                 Dock = DockStyle.Top,
@@ -782,9 +782,8 @@ namespace CineMatch
             return card;
         }
 
-        // ════════════════════════════════════════════════════
         //  RATING HISTORY ROW
-        // ════════════════════════════════════════════════════
+    
         private Panel MakeRatingRow(RatingHistory r)
         {
             var row = new Panel
@@ -834,9 +833,8 @@ namespace CineMatch
             return row;
         }
 
-        // ════════════════════════════════════════════════════
         //  TOAST
-        // ════════════════════════════════════════════════════
+    
         private void ShowToast(string message)
         {
             _toastForm?.Close();
@@ -870,10 +868,8 @@ namespace CineMatch
             timer.Tick += (s, e) => { timer.Stop(); _toastForm?.Close(); };
             timer.Start();
         }
-
-        // ════════════════════════════════════════════════════
         //  HELPERS
-        // ════════════════════════════════════════════════════
+
         private Label MakeStatLabel(string value, string caption)
         {
             return new Label
